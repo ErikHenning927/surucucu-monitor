@@ -14,6 +14,18 @@ import threading
 import time
 import psutil
 
+# Sanitização de ambiente: remove contaminação de variáveis exportadas por snaps (ex: VS Code Snap)
+if "GSETTINGS_SCHEMA_DIR" in os.environ and "snap" in os.environ["GSETTINGS_SCHEMA_DIR"].lower():
+    del os.environ["GSETTINGS_SCHEMA_DIR"]
+
+if "XDG_DATA_DIRS_VSCODE_SNAP_ORIG" in os.environ:
+    os.environ["XDG_DATA_DIRS"] = os.environ["XDG_DATA_DIRS_VSCODE_SNAP_ORIG"]
+elif "XDG_DATA_DIRS" in os.environ and "snap" in os.environ["XDG_DATA_DIRS"].lower():
+    clean_dirs = [d for d in os.environ["XDG_DATA_DIRS"].split(":") if "snap" not in d.lower()]
+    if "/usr/share" not in clean_dirs:
+        clean_dirs.append("/usr/share")
+    os.environ["XDG_DATA_DIRS"] = ":".join(clean_dirs)
+
 # Suporte a virtualenvs: busca bibliotecas nativas GTK/Cairo do sistema se não estiverem na venv
 for _dist_path in ["/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"]:
     if os.path.isdir(_dist_path) and _dist_path not in sys.path:

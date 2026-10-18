@@ -92,6 +92,17 @@ def main():
     if args.restart:
         stop_instances()
 
+    # Sanitização de ambiente: remove contaminação de variáveis de snaps (ex: VS Code)
+    if "GSETTINGS_SCHEMA_DIR" in os.environ and "snap" in os.environ["GSETTINGS_SCHEMA_DIR"].lower():
+        del os.environ["GSETTINGS_SCHEMA_DIR"]
+    if "XDG_DATA_DIRS_VSCODE_SNAP_ORIG" in os.environ:
+        os.environ["XDG_DATA_DIRS"] = os.environ["XDG_DATA_DIRS_VSCODE_SNAP_ORIG"]
+    elif "XDG_DATA_DIRS" in os.environ and "snap" in os.environ["XDG_DATA_DIRS"].lower():
+        clean_dirs = [d for d in os.environ["XDG_DATA_DIRS"].split(":") if "snap" not in d.lower()]
+        if "/usr/share" not in clean_dirs:
+            clean_dirs.append("/usr/share")
+        os.environ["XDG_DATA_DIRS"] = ":".join(clean_dirs)
+
     # Garantir variáveis de display para Wayland / X11
     if "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
         os.environ["DISPLAY"] = ":0"

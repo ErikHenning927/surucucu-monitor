@@ -9,5 +9,5 @@ High-performance Glassmorphic HUD monitoring:
 """
 
 __app_name__ = "surucucu"
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 __author__ = "Erik"
