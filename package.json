@@ -1,0 +1,35 @@
+{
+  "name": "surucucu",
+  "version": "0.1.0",
+  "description": "High-performance Glassmorphic AI, GPU (VRAM/CUDA), Docker & System Observability Cockpit for Linux",
+  "main": "bin/surucucu.js",
+  "bin": {
+    "surucucu": "./bin/surucucu.js"
+  },
+  "scripts": {
+    "start": "python3 -m surucucu",
+    "background": "python3 -m surucucu -b",
+    "stop": "python3 -m surucucu -k",
+    "status": "python3 -m surucucu --status"
+  },
+  "keywords": [
+    "surucucu",
+    "nvidia",
+    "gpu",
+    "vram",
+    "cuda",
+    "docker",
+    "ai",
+    "llm",
+    "observability",
+    "monitoring",
+    "hud",
+    "linux",
+    "gtk"
+  ],
+  "author": "Erik",
+  "license": "MIT",
+  "os": [
+    "linux"
+  ]
+}

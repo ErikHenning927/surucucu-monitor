@@ -1,0 +1,12 @@
+[Desktop Entry]
+Name=Surucucu
+GenericName=Observability Cockpit
+Comment=Cockpit suspenso de observabilidade para IA, VRAM, Docker e Sistema
+Exec=/home/erik/.local/bin/surucucu
+Icon=surucucu
+Terminal=false
+Type=Application
+Categories=System;Monitor;Development;
+StartupNotify=true
+StartupWMClass=surucucu
+Keywords=gpu;nvidia;vram;docker;cuda;monitor;ai;

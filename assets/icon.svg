@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Gradiente de fundo estilo vidro escuro -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1e2e" />
+      <stop offset="50%" stop-color="#11111b" />
+      <stop offset="100%" stop-color="#0b0b12" />
+    </linearGradient>
+
+    <!-- Gradiente de borda iluminada (Glass rim light) -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#818cf8" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.7" />
+    </linearGradient>
+
+    <!-- Gradiente do pulso de recursos (Barras de RAM/CPU/GPU) -->
+    <linearGradient id="meterGrad1" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="100%" stop-color="#34d399" />
+    </linearGradient>
+    <linearGradient id="meterGrad2" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#38bdf8" />
+    </linearGradient>
+    <linearGradient id="meterGrad3" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+
+    <!-- Brilho Glow Filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Fundo com cantos arredondados modernos (Squircle) -->
+  <rect x="8" y="8" width="112" height="112" rx="26" fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="2.5" />
+
+  <!-- Reflexo de luz na parte superior do vidro -->
+  <path d="M 12,34 C 12,20 20,12 34,12 L 94,12 C 108,12 116,20 116,34 L 116,46 C 85,54 45,54 12,46 Z" fill="white" opacity="0.05" />
+
+  <!-- Base de monitoramento / Painel central HUD -->
+  <rect x="22" y="24" width="84" height="64" rx="14" fill="#181825" stroke="#313244" stroke-width="1.5" opacity="0.85" />
+
+  <!-- Barras do medidor de recursos (RAM, SWAP, GPU, CPU) -->
+  <!-- Barra 1: RAM -->
+  <rect x="34" y="58" width="10" height="20" rx="4" fill="url(#meterGrad1)" filter="url(#glow)" />
+  <!-- Barra 2: CPU -->
+  <rect x="49" y="44" width="10" height="34" rx="4" fill="url(#meterGrad2)" filter="url(#glow)" />
+  <!-- Barra 3: GPU -->
+  <rect x="64" y="36" width="10" height="42" rx="4" fill="url(#meterGrad3)" filter="url(#glow)" />
+  <!-- Barra 4: SWAP / Rede -->
+  <rect x="79" y="50" width="10" height="28" rx="4" fill="url(#meterGrad2)" filter="url(#glow)" />
+
+  <!-- Linha de onda cardíaca / osciloscópio na tela -->
+  <path d="M 28,68 L 40,68 L 46,54 L 54,76 L 62,48 L 70,68 L 100,68" fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.65" />
+
+  <!-- Pinos / Conectores de Chip na borda inferior -->
+  <g fill="#818cf8" opacity="0.7">
+    <rect x="36" y="94" width="6" height="12" rx="2" />
+    <rect x="48" y="94" width="6" height="12" rx="2" />
+    <rect x="60" y="94" width="6" height="12" rx="2" />
+    <rect x="72" y="94" width="6" height="12" rx="2" />
+    <rect x="84" y="94" width="6" height="12" rx="2" />
+  </g>
+
+  <!-- Ponto indicador de status ativo (LED verde neon) -->
+  <circle cx="96" cy="34" r="3.5" fill="#34d399" filter="url(#glow)" />
+</svg>

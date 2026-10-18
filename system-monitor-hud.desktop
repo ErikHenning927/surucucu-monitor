@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Monitor de Sistema & Scripts (HUD)
+Comment=Painel suspenso de monitoramento de RAM, SWAP, GPU, Serviços e Scripts Locais
+Exec=/home/erik/dev/setup-linux/start-monitor.sh
+Icon=system-monitor-hud
+Terminal=false
+Type=Application
+Categories=System;Monitor;Development;
+StartupNotify=true
+StartupWMClass=system-monitor-hud
