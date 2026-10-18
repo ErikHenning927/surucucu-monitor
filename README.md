@@ -68,10 +68,25 @@ sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0
 
 ### Instalação
 
-#### 1. Instalação Local Editável (Desenvolvimento)
+#### ⚡ 1. Instalação Automática via `curl` (Recomendado)
+
+Instale e configure tudo automaticamente no Linux (Ubuntu, Debian, Fedora, Arch) com um único comando:
+
 ```bash
-git clone https://github.com/seu-usuario/surucucu.git
-cd surucucu
+curl -fsSL https://raw.githubusercontent.com/ErikHenning927/surucucu-monitor/main/install.sh | bash
+```
+
+> *O script instala as dependências gráficas nativas, baixa o pacote PyPI, configura o comando `surucucu` e adiciona o atalho e ícone oficial ao menu de aplicativos do sistema.*
+
+#### 2. Via `pip` (PyPI)
+```bash
+pip install -U surucucu
+```
+
+#### 3. Instalação Local Editável (Desenvolvimento)
+```bash
+git clone https://github.com/ErikHenning927/surucucu-monitor.git
+cd surucucu-monitor
 pip install -e .
 ```
 
