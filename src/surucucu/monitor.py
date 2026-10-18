@@ -12,13 +12,24 @@ import subprocess
 import json
 import threading
 import time
-import cairo
 import psutil
-import gi
 
-gi.require_version("Gtk", "3.0")
-gi.require_version("Gdk", "3.0")
-from gi.repository import Gtk, Gdk, GLib, Pango
+# Suporte a virtualenvs: busca bibliotecas nativas GTK/Cairo do sistema se não estiverem na venv
+for _dist_path in ["/usr/lib/python3/dist-packages", "/usr/local/lib/python3/dist-packages"]:
+    if os.path.isdir(_dist_path) and _dist_path not in sys.path:
+        sys.path.append(_dist_path)
+
+try:
+    import cairo
+    import gi
+    gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
+    from gi.repository import Gtk, Gdk, GLib, Pango
+except (ImportError, ValueError) as err:
+    print(f"\n❌ [Surucucu] Erro ao carregar interface gráfica: {err}")
+    print("💡 O Surucucu utiliza o GTK 3 nativo do Linux. Para instalar no Ubuntu/Debian:")
+    print("   sudo apt update && sudo apt install -y python3-gi python3-gi-cairo gir1.2-gtk-3.0\n")
+    sys.exit(1)
 
 # -----------------------------------------------------------------------------
 # Configurações Persistentes
