@@ -474,7 +474,10 @@ class DockerMonitorWorker:
                         break
                     p = line.strip().split("\t")
                     if len(p) >= 5:
-                        c_id, c_name, c_cpu, c_mem, c_pct = p[0], p[1], p[2], p[3], p[4]
+                        c_id = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', p[0]).strip()
+                        c_name = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', p[1]).strip()
+                        c_cpu = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', p[2]).strip()
+                        c_mem = re.sub(r'\x1b\[[0-9;]*[a-zA-Z]', '', p[3]).strip()
                         meta = ps_meta.get(c_name, {'status': 'Up', 'ports': '-'})
                         mem_b = self._parse_mem(c_mem)
                         with self.lock:
@@ -883,7 +886,7 @@ class SystemMonitorWindow(Gtk.Window):
         # Configurar seleção do TreeView
         self.selection = self.treeview.get_selection()
         self.selection.set_mode(Gtk.SelectionMode.SINGLE)
-        self.selection.connect("changed", self.on_selection_changed)
+        self.selection_handler_id = self.selection.connect("changed", self.on_selection_changed)
         self.treeview.connect("row-activated", self.on_row_activated)
 
         # Scroll
@@ -924,6 +927,10 @@ class SystemMonitorWindow(Gtk.Window):
             self.selected_item_id = model.get_value(tree_iter, 0)
             self.selected_item_name = model.get_value(tree_iter, 2)
             self.selected_is_docker = model.get_value(tree_iter, 10)
+        else:
+            self.selected_item_id = None
+            self.selected_item_name = None
+            self.selected_is_docker = False
         self.update_action_buttons()
 
     def update_action_buttons(self):
@@ -938,11 +945,12 @@ class SystemMonitorWindow(Gtk.Window):
                 self.btn_restart.set_sensitive(False)
                 self.btn_restart.set_label("🔄 Reiniciar Container")
                 self.btn_kill.set_sensitive(True)
-                self.btn_kill.set_label(f"⏹️ Finalizar PID {self.selected_item_id}")
+                raw_pid = self.selected_item_id.replace("proc:", "")
+                self.btn_kill.set_label(f"⏹️ Finalizar PID {raw_pid}")
         else:
-            self.btn_restart.set_sensitive(True)
+            self.btn_restart.set_sensitive(False)
             self.btn_restart.set_label("🔄 Reiniciar Container")
-            self.btn_kill.set_sensitive(True)
+            self.btn_kill.set_sensitive(False)
             self.btn_kill.set_label("⏹️ Parar / Finalizar")
 
     def on_row_activated(self, treeview, path, column):
@@ -1004,6 +1012,11 @@ class SystemMonitorWindow(Gtk.Window):
         else:
             self.btn_filter_all.get_style_context().add_class("active")
         
+        # Resetar seleção ao alternar de aba/filtro
+        self.selected_item_id = None
+        self.selected_item_name = None
+        self.selected_is_docker = False
+        self.selection.unselect_all()
         self.update_processes()
 
     def on_search_changed(self, entry):
@@ -1189,7 +1202,7 @@ class SystemMonitorWindow(Gtk.Window):
                     continue
 
             items.append({
-                'id_str': c['id'][:10],
+                'id_str': f"docker:{c['name']}",
                 'tag': tag,
                 'name': c['name'],
                 'detail': f"Portas {c['ports']}" if c['ports'] != '-' else c['status'],
@@ -1272,7 +1285,7 @@ class SystemMonitorWindow(Gtk.Window):
                         continue
 
                 items.append({
-                    'id_str': str(pid),
+                    'id_str': f"proc:{pid}",
                     'tag': tag,
                     'name': display_name,
                     'detail': short_cwd if short_cwd != '-' else (cmdline[:45] + '...'),
@@ -1299,6 +1312,11 @@ class SystemMonitorWindow(Gtk.Window):
             self.selected_item_name = model.get_value(current_iter, 2)
             self.selected_is_docker = model.get_value(current_iter, 10)
 
+        # Bloqueia temporariamente o handler do sinal 'changed' para evitar que GTK
+        # selecione o último item ao limpar e recriar as linhas da tabela
+        if hasattr(self, 'selection_handler_id') and self.selection_handler_id:
+            self.selection.handler_block(self.selection_handler_id)
+
         self.proc_store.clear()
         selected_iter_to_restore = None
         for it in top_items:
@@ -1319,7 +1337,15 @@ class SystemMonitorWindow(Gtk.Window):
                 selected_iter_to_restore = row_iter
 
         if selected_iter_to_restore:
-            selection.select_iter(selected_iter_to_restore)
+            self.selection.select_iter(selected_iter_to_restore)
+        else:
+            self.selected_item_id = None
+            self.selected_item_name = None
+            self.selected_is_docker = False
+
+        if hasattr(self, 'selection_handler_id') and self.selection_handler_id:
+            self.selection.handler_unblock(self.selection_handler_id)
+
         self.update_action_buttons()
 
         # Atualizar Card Resumo da Stack de IA & Docker (Badges Individuais)
@@ -1417,7 +1443,8 @@ class SystemMonitorWindow(Gtk.Window):
             dlg.destroy()
             return
 
-        action_msg = f"parar o container Docker '{item_name}'" if is_docker else f"encerrar o processo '{item_name}' (PID {item_id})"
+        raw_pid = str(item_id).replace("proc:", "").replace("docker:", "")
+        action_msg = f"parar o container Docker '{item_name}'" if is_docker else f"encerrar o processo '{item_name}' (PID {raw_pid})"
         dialog = Gtk.MessageDialog(
             transient_for=self, flags=0,
             message_type=Gtk.MessageType.WARNING,
@@ -1432,10 +1459,10 @@ class SystemMonitorWindow(Gtk.Window):
                 subprocess.Popen(["docker", "stop", item_name])
             else:
                 try:
-                    proc = psutil.Process(int(item_id))
+                    proc = psutil.Process(int(raw_pid))
                     proc.terminate()
                 except Exception:
-                    subprocess.Popen(["pkexec", "kill", "-9", str(item_id)])
+                    subprocess.Popen(["pkexec", "kill", "-9", str(raw_pid)])
             self.update_processes()
 
 def main():
