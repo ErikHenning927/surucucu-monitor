@@ -116,12 +116,18 @@ def main():
             print(f"🐍 Surucucu já está em execução (PID: {existing[0]}). Use --restart para reiniciar.")
             return 0
 
-        # Lançar processo desacoplado
+        # Lançar processo desacoplado garantindo PYTHONPATH
         cmd = [sys.executable, "-m", "surucucu"]
+        env = os.environ.copy()
+        src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if src_dir not in env.get("PYTHONPATH", ""):
+            env["PYTHONPATH"] = f"{src_dir}:{env.get('PYTHONPATH', '')}".strip(":")
+
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+            env=env,
             preexec_fn=os.setpgrp,
         )
         print(f"🐍 Surucucu iniciado em segundo plano (PID: {proc.pid}).")

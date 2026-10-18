@@ -36,7 +36,8 @@ try:
     import gi
     gi.require_version("Gtk", "3.0")
     gi.require_version("Gdk", "3.0")
-    from gi.repository import Gtk, Gdk, GLib, Pango
+    gi.require_version("GdkPixbuf", "2.0")
+    from gi.repository import Gtk, Gdk, GLib, Pango, GdkPixbuf
 except (ImportError, ValueError) as err:
     print(f"\n❌ [Surucucu] Erro ao carregar interface gráfica: {err}")
     print("💡 O Surucucu utiliza o GTK 3 nativo do Linux. Para instalar no Ubuntu/Debian:")
@@ -543,34 +544,54 @@ class SystemMonitorWindow(Gtk.Window):
         css_content = generate_css(self.opacity_val)
         self.css_provider.load_from_data(css_content.encode("utf-8"))
 
-    def setup_icon(self):
+    def get_icon_path(self):
         assets_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
         candidates = [
             os.path.join(assets_dir, "icon.png"),
-            os.path.join(assets_dir, "icon.svg"),
-            os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps/surucucu.svg"),
             os.path.expanduser("~/.local/share/icons/hicolor/256x256/apps/surucucu.png"),
+            os.path.expanduser("~/.local/share/icons/hicolor/scalable/apps/surucucu.svg"),
+            os.path.join(assets_dir, "icon.svg"),
         ]
         for icon_path in candidates:
             if os.path.exists(icon_path):
-                try:
-                    self.set_icon_from_file(icon_path)
-                    Gtk.Window.set_default_icon_from_file(icon_path)
-                    return
-                except Exception:
-                    pass
+                return icon_path
+        return None
+
+    def setup_icon(self):
+        self.set_wmclass("surucucu", "Surucucu")
+        self.set_role("surucucu")
+        icon_path = self.get_icon_path()
+        if icon_path:
+            try:
+                self.set_icon_from_file(icon_path)
+                Gtk.Window.set_default_icon_from_file(icon_path)
+            except Exception:
+                pass
         self.set_icon_name("surucucu")
+        Gtk.Window.set_default_icon_name("surucucu")
 
     def setup_ui(self):
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         self.add(self.main_box)
 
         # ---------------- HEADER BAR ----------------
-        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        header = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         header.get_style_context().add_class("header-box")
         
+        # Logo visual da marca no cabeçalho
+        icon_path = self.get_icon_path()
+        if icon_path:
+            try:
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(icon_path, 28, 28, True)
+                brand_img = Gtk.Image.new_from_pixbuf(pixbuf)
+                brand_img.set_margin_start(2)
+                brand_img.set_margin_end(2)
+                header.pack_start(brand_img, False, False, 0)
+            except Exception:
+                pass
+
         titles_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-        lbl_title = Gtk.Label(label="🐍 SURUCUCU")
+        lbl_title = Gtk.Label(label="SURUCUCU")
         lbl_title.set_xalign(0)
         lbl_title.get_style_context().add_class("title-label")
         
