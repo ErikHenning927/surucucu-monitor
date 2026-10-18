@@ -7,6 +7,7 @@
     "surucucu": "./bin/surucucu.js"
   },
   "scripts": {
+    "build": "bash -c 'rm -rf build src/*.egg-info && .venv/bin/python -m build && rm -rf build'",
     "start": "python3 -m surucucu",
     "background": "python3 -m surucucu -b",
     "stop": "python3 -m surucucu -k",
