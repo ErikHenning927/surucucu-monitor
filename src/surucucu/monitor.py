@@ -260,10 +260,21 @@ treeview {{
     font-size: 11px;
 }}
 
-treeview:selected {{
-    background-color: rgba(56, 189, 248, 0.35);
+treeview.view:selected,
+treeview:selected,
+treeview row:selected,
+treeview row:selected:focus {
+    background-color: rgba(2, 132, 199, 0.75);
     color: #ffffff;
-}}
+}
+
+treeview row:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+button:disabled {
+    opacity: 0.45;
+}
 
 treeview header button {{
     background-color: rgba(255, 255, 255, 0.06);
@@ -522,6 +533,11 @@ class SystemMonitorWindow(Gtk.Window):
         # Iniciar monitor de contêineres Docker
         self.docker_worker = DockerMonitorWorker()
         self.gpu_vram_map = {}  # {pid: {'vram': mib, 'type': 'C'/'G'}}
+
+        # Estado da linha selecionada (para não perder seleção nos refreshes de 1.2s)
+        self.selected_item_id = None
+        self.selected_item_name = None
+        self.selected_is_docker = False
 
         self.apply_css(self.opacity_val)
         self.setup_ui()
@@ -864,6 +880,12 @@ class SystemMonitorWindow(Gtk.Window):
         col_cpu.set_min_width(50)
         self.treeview.append_column(col_cpu)
 
+        # Configurar seleção do TreeView
+        self.selection = self.treeview.get_selection()
+        self.selection.set_mode(Gtk.SelectionMode.SINGLE)
+        self.selection.connect("changed", self.on_selection_changed)
+        self.treeview.connect("row-activated", self.on_row_activated)
+
         # Scroll
         scroller = Gtk.ScrolledWindow()
         scroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
@@ -879,21 +901,60 @@ class SystemMonitorWindow(Gtk.Window):
         action_bar.pack_start(self.lbl_proc_count, False, False, 0)
 
         # Botão Reiniciar Container (para Docker)
-        btn_restart = Gtk.Button(label="🔄 Reiniciar Container")
-        btn_restart.get_style_context().add_class("btn-restart")
-        btn_restart.connect("clicked", self.on_restart_container_clicked)
-        action_bar.pack_end(btn_restart, False, False, 0)
+        self.btn_restart = Gtk.Button(label="🔄 Reiniciar Container")
+        self.btn_restart.get_style_context().add_class("btn-restart")
+        self.btn_restart.set_tooltip_text("Selecione um container na tabela acima para reiniciar")
+        self.btn_restart.connect("clicked", self.on_restart_container_clicked)
+        action_bar.pack_end(self.btn_restart, False, False, 0)
 
         # Botão Parar / Encerrar
-        btn_kill = Gtk.Button(label="⏹️ Parar / Finalizar")
-        btn_kill.get_style_context().add_class("btn-kill")
-        btn_kill.connect("clicked", self.on_kill_selected_clicked)
-        action_bar.pack_end(btn_kill, False, False, 0)
+        self.btn_kill = Gtk.Button(label="⏹️ Parar / Finalizar")
+        self.btn_kill.get_style_context().add_class("btn-kill")
+        self.btn_kill.set_tooltip_text("Selecione um container ou processo para finalizar")
+        self.btn_kill.connect("clicked", self.on_kill_selected_clicked)
+        action_bar.pack_end(self.btn_kill, False, False, 0)
 
         self.proc_section.pack_start(action_bar, False, False, 0)
         self.main_box.pack_start(self.proc_section, True, True, 0)
 
     # ---------------- CONTROLES & HANDLERS ----------------
+    def on_selection_changed(self, selection):
+        model, tree_iter = selection.get_selected()
+        if tree_iter:
+            self.selected_item_id = model.get_value(tree_iter, 0)
+            self.selected_item_name = model.get_value(tree_iter, 2)
+            self.selected_is_docker = model.get_value(tree_iter, 10)
+        self.update_action_buttons()
+
+    def update_action_buttons(self):
+        if self.selected_item_id and self.selected_item_name:
+            short_name = (self.selected_item_name[:15] + "..") if len(self.selected_item_name) > 17 else self.selected_item_name
+            if self.selected_is_docker:
+                self.btn_restart.set_sensitive(True)
+                self.btn_restart.set_label(f"🔄 Reiniciar '{short_name}'")
+                self.btn_kill.set_sensitive(True)
+                self.btn_kill.set_label(f"⏹️ Parar '{short_name}'")
+            else:
+                self.btn_restart.set_sensitive(False)
+                self.btn_restart.set_label("🔄 Reiniciar Container")
+                self.btn_kill.set_sensitive(True)
+                self.btn_kill.set_label(f"⏹️ Finalizar PID {self.selected_item_id}")
+        else:
+            self.btn_restart.set_sensitive(True)
+            self.btn_restart.set_label("🔄 Reiniciar Container")
+            self.btn_kill.set_sensitive(True)
+            self.btn_kill.set_label("⏹️ Parar / Finalizar")
+
+    def on_row_activated(self, treeview, path, column):
+        model = treeview.get_model()
+        tree_iter = model.get_iter(path)
+        if tree_iter:
+            is_docker = model.get_value(tree_iter, 10)
+            if is_docker:
+                self.on_restart_container_clicked(None)
+            else:
+                self.on_kill_selected_clicked(None)
+
     def on_opacity_slider_changed(self, scale):
         val = int(scale.get_value())
         self.lbl_opacity_txt.set_text(f"{val}%")
@@ -1230,9 +1291,18 @@ class SystemMonitorWindow(Gtk.Window):
         items.sort(key=lambda x: (x['vram_val'], x['ram_val']), reverse=True)
         top_items = items[:60]
 
+        # Salva o ID selecionado antes da atualização para não perder a seleção nos refreshes
+        selection = self.treeview.get_selection()
+        model, current_iter = selection.get_selected()
+        if current_iter:
+            self.selected_item_id = model.get_value(current_iter, 0)
+            self.selected_item_name = model.get_value(current_iter, 2)
+            self.selected_is_docker = model.get_value(current_iter, 10)
+
         self.proc_store.clear()
+        selected_iter_to_restore = None
         for it in top_items:
-            self.proc_store.append([
+            row_iter = self.proc_store.append([
                 it['id_str'],
                 it['tag'],
                 it['name'],
@@ -1245,6 +1315,12 @@ class SystemMonitorWindow(Gtk.Window):
                 it['cpu_str'],
                 it['is_docker']
             ])
+            if self.selected_item_id and it['id_str'] == self.selected_item_id:
+                selected_iter_to_restore = row_iter
+
+        if selected_iter_to_restore:
+            selection.select_iter(selected_iter_to_restore)
+        self.update_action_buttons()
 
         # Atualizar Card Resumo da Stack de IA & Docker (Badges Individuais)
         total_cnt = len(containers)
@@ -1272,11 +1348,26 @@ class SystemMonitorWindow(Gtk.Window):
     def on_restart_container_clicked(self, widget):
         selection = self.treeview.get_selection()
         model, tree_iter = selection.get_selected()
-        if not tree_iter:
+
+        is_docker = self.selected_is_docker
+        c_name = self.selected_item_name
+
+        if tree_iter:
+            is_docker = model.get_value(tree_iter, 10)
+            c_name = model.get_value(tree_iter, 2)
+
+        if not c_name or not self.selected_item_id:
+            dlg = Gtk.MessageDialog(
+                transient_for=self, flags=0,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text="Nenhum item selecionado"
+            )
+            dlg.format_secondary_text("Clique em um container na tabela acima para selecioná-lo antes de reiniciar.")
+            dlg.run()
+            dlg.destroy()
             return
 
-        is_docker = model.get_value(tree_iter, 10)
-        c_name = model.get_value(tree_iter, 2)
         if not is_docker:
             dlg = Gtk.MessageDialog(
                 transient_for=self, flags=0,
@@ -1284,6 +1375,7 @@ class SystemMonitorWindow(Gtk.Window):
                 buttons=Gtk.ButtonsType.OK,
                 text="Ação disponível apenas para Containers Docker"
             )
+            dlg.format_secondary_text(f"'{c_name}' é um processo do sistema, não um container Docker.")
             dlg.run()
             dlg.destroy()
             return
@@ -1294,6 +1386,7 @@ class SystemMonitorWindow(Gtk.Window):
             buttons=Gtk.ButtonsType.YES_NO,
             text=f"Reiniciar container '{c_name}'?"
         )
+        dialog.format_secondary_text("O container será reiniciado via 'docker restart'.")
         resp = dialog.run()
         dialog.destroy()
         if resp == Gtk.ResponseType.YES:
@@ -1302,12 +1395,27 @@ class SystemMonitorWindow(Gtk.Window):
     def on_kill_selected_clicked(self, widget):
         selection = self.treeview.get_selection()
         model, tree_iter = selection.get_selected()
-        if not tree_iter:
-            return
 
-        item_id = model.get_value(tree_iter, 0)
-        item_name = model.get_value(tree_iter, 2)
-        is_docker = model.get_value(tree_iter, 10)
+        item_id = self.selected_item_id
+        item_name = self.selected_item_name
+        is_docker = self.selected_is_docker
+
+        if tree_iter:
+            item_id = model.get_value(tree_iter, 0)
+            item_name = model.get_value(tree_iter, 2)
+            is_docker = model.get_value(tree_iter, 10)
+
+        if not item_name or not item_id:
+            dlg = Gtk.MessageDialog(
+                transient_for=self, flags=0,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text="Nenhum item selecionado"
+            )
+            dlg.format_secondary_text("Clique em um container ou processo na tabela acima para selecioná-lo antes de finalizar.")
+            dlg.run()
+            dlg.destroy()
+            return
 
         action_msg = f"parar o container Docker '{item_name}'" if is_docker else f"encerrar o processo '{item_name}' (PID {item_id})"
         dialog = Gtk.MessageDialog(
