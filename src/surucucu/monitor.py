@@ -263,18 +263,18 @@ treeview {{
 treeview.view:selected,
 treeview:selected,
 treeview row:selected,
-treeview row:selected:focus {
+treeview row:selected:focus {{
     background-color: rgba(2, 132, 199, 0.75);
     color: #ffffff;
-}
+}}
 
-treeview row:hover {
+treeview row:hover {{
     background-color: rgba(255, 255, 255, 0.08);
-}
+}}
 
-button:disabled {
+button:disabled {{
     opacity: 0.45;
-}
+}}
 
 treeview header button {{
     background-color: rgba(255, 255, 255, 0.06);
